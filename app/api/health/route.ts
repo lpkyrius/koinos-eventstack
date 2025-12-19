@@ -1,5 +1,87 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import { NextRequest, NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  res.status(200).json({ status: 'ok' });
+export async function GET(request: NextRequest) {
+  try {
+    // Check database connection
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      return NextResponse.json(
+        {
+          status: 'error',
+          timestamp: new Date().toISOString(),
+          checks: {
+            database: {
+              status: 'error',
+              message: 'Database configuration missing',
+            },
+            environment: {
+              status: 'error',
+              message: 'Required environment variables not set',
+            },
+          },
+        },
+        { status: 503 }
+      );
+    }
+
+    // Test database connectivity
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const { error } = await supabase.from('_health_check').select('*').limit(1);
+
+    // If table doesn't exist, that's actually expected and ok
+    const dbStatus = error?.code === 'PGRST116' ? 'ok' : error ? 'error' : 'ok';
+    const dbMessage =
+      error?.code === 'PGRST116'
+        ? 'Database connection successful'
+        : error?.message || 'Database connection successful';
+
+    // Check environment variables
+    const requiredEnvVars = [
+      'NEXT_PUBLIC_SUPABASE_URL',
+      'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+      'SUPABASE_SERVICE_ROLE_KEY',
+      'NEXTAUTH_URL',
+      'NEXTAUTH_SECRET',
+    ];
+
+    const envStatus = requiredEnvVars.every((varName) => process.env[varName])
+      ? 'ok'
+      : 'error';
+    const missingVars = requiredEnvVars.filter(
+      (varName) => !process.env[varName]
+    );
+
+    // Overall health status
+    const overallStatus =
+      dbStatus === 'ok' && envStatus === 'ok' ? 'ok' : 'degraded';
+
+    return NextResponse.json({
+      status: overallStatus,
+      timestamp: new Date().toISOString(),
+      version: process.env.npm_package_version || '0.1.0',
+      checks: {
+        database: { status: dbStatus, message: dbMessage },
+        environment: {
+          status: envStatus,
+          message:
+            envStatus === 'ok'
+              ? 'All required environment variables set'
+              : `Missing environment variables: ${missingVars.join(', ')}`,
+        },
+        uptime: { status: 'ok', seconds: process.uptime() },
+      },
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        status: 'error',
+        timestamp: new Date().toISOString(),
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
 }

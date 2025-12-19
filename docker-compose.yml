@@ -1,6 +1,8 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - '3000:3000'
     env_file:
@@ -11,3 +13,7 @@ services:
       - /app/.next
     command: npm run dev
     restart: unless-stopped
+    environment:
+      - NODE_ENV=development
+    stdin_open: true
+    tty: true
