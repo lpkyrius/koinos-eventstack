@@ -1,5 +1,5 @@
-# Use the official Node.js 18 image
-FROM node:18-alpine
+# Use the official Node.js 20 image (recommended for Supabase)
+FROM node:20-alpine
 
 # Set the working directory in the container
 WORKDIR /app

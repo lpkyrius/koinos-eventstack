@@ -11,6 +11,12 @@ This project is a production-ready foundation for a Next.js application using Ty
 - **lib/**: Shared utilities and client configurations.
 - **config/**: Environment and application configuration files.
 
+
+# Testing Pages
+http://localhost:3000/
+http://localhost:3000/auth
+http://localhost:3000/dashboard
+
 ## Getting Started
 
 ### Prerequisites

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Check database connection
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -31,12 +31,13 @@ export async function GET(request: NextRequest) {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { error } = await supabase.from('_health_check').select('*').limit(1);
 
-    // If table doesn't exist, that's actually expected and ok
-    const dbStatus = error?.code === 'PGRST116' ? 'ok' : error ? 'error' : 'ok';
-    const dbMessage =
-      error?.code === 'PGRST116'
-        ? 'Database connection successful'
-        : error?.message || 'Database connection successful';
+    // PGRST116: Bucket or table not found (PostgREST)
+    // 42P01: undefined_table (Postgres)
+    const isTableMissing = error?.code === 'PGRST116' || error?.message?.includes('42P01');
+    const dbStatus = isTableMissing || !error ? 'ok' : 'error';
+    const dbMessage = isTableMissing
+      ? 'Database connection successful (schema not yet initialized)'
+      : error?.message || 'Database connection successful';
 
     // Check environment variables
     const requiredEnvVars = [
